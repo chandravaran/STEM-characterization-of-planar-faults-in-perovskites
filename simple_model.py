@@ -13,6 +13,8 @@ from keras.layers import MaxPooling2D
 from keras.layers import Flatten
 from keras.layers import Dense
 from keras.layers import Dropout
+from tensorflow.keras.layers import BatchNormalization
+from keras.callbacks import EarlyStopping, ModelCheckpoint, ReduceLROnPlateau
 import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
@@ -25,7 +27,7 @@ import os, pathlib, argparse
 
 mapping = {'defect': 0,'non_defect': 1}
 class_weight = {0: 1., 1: 1.}
-EPOCHS=25
+EPOCHS=50
 file = open('C:\\Users\\Chandravaran K V\\Documents\\internship\\test_full.txt', 'r')
 testfiles = file.readlines()
 print(len(testfiles))
@@ -37,24 +39,58 @@ model = Sequential()
 
 model.add(Convolution2D(32, (3, 3), input_shape = (50, 50, 3), activation = 'relu'))
 
-model.add(MaxPooling2D(pool_size = (2, 2)))
-
-model.add(Convolution2D(32, (3, 3), activation = 'relu'))
+#model.add(BatchNormalization(axis=3))
 
 model.add(MaxPooling2D(pool_size = (2, 2)))
+
+model.add(Dropout(0.2))
+
+model.add(Convolution2D(64, (3, 3), activation = 'relu'))
+
+#model.add(BatchNormalization(axis=3))
+
+model.add(MaxPooling2D(pool_size = (2, 2)))
+
+model.add(Dropout(0.2))
+
+model.add(Convolution2D(64, (3, 3), activation = 'relu'))
+
+#model.add(BatchNormalization(axis=3))
+
+model.add(MaxPooling2D(pool_size = (2, 2)))
+
+model.add(Dropout(0.2))
+
+model.add(Convolution2D(128, (3, 3), activation = 'relu'))
+
+#model.add(BatchNormalization(axis=3))
+
+model.add(MaxPooling2D(pool_size = (2, 2)))
+
+model.add(Dropout(0.2))
 
 model.add(Flatten())
 
-model.add(Dense( activation = 'relu',units= 2585))
+model.add(Dense( activation = 'relu',units= 2048))
+
+model.add(Dropout(0.2))
+
+model.add(Dense(activation='relu',units=1024))
+		
+model.add(Dropout(0.5))
 
 model.add(Dense(activation = 'sigmoid',units = 1))
 
 model.summary()
-lr=0.001
+lr=0.00001
 opt = Adam(learning_rate=lr, amsgrad=True)
 model.compile(optimizer = opt, loss = 'binary_crossentropy', metrics = ['accuracy'])
 
-
+lr_reducer = ReduceLROnPlateau(monitor='val_loss',
+                               factor=0.25,
+                               patience=4,
+                               verbose=1,
+                               min_lr=0)
 
 
 #inputing the images 
@@ -84,7 +120,7 @@ test_set = test_datagen.flow_from_directory('C:\\Users\\Chandravaran K V\\Docume
                                             batch_size = 4,
                                             class_mode = 'binary')
 print(test_set.labels)
-H = model.fit_generator(training_set,steps_per_epoch=10,epochs=EPOCHS,validation_data=test_set,validation_steps=10,class_weight=class_weight)
+H = model.fit_generator(training_set,steps_per_epoch=20,epochs=EPOCHS,validation_data=test_set,validation_steps=20,class_weight=class_weight,callbacks = [lr_reducer])
 
 
 
@@ -96,9 +132,9 @@ plt.style.use("ggplot")
 plt.figure()
 N = EPOCHS
 plt.plot(np.arange(0, N), H.history["loss"], label="train_loss")
-#plt.plot(np.arange(0, N), H.history["val_loss"], label="val_loss")
-#plt.plot(np.arange(0, N), H.history["accuracy"], label="train_acc")
-#plt.plot(np.arange(0, N), H.history["val_accuracy"], label="val_acc")
+plt.plot(np.arange(0, N), H.history["val_loss"], label="val_loss")
+plt.plot(np.arange(0, N), H.history["accuracy"], label="train_acc")
+plt.plot(np.arange(0, N), H.history["val_accuracy"], label="val_acc")
 plt.title("Training Loss and Accuracy")
 plt.xlabel("Epoch #")
 plt.ylabel("Loss/Accuracy")
